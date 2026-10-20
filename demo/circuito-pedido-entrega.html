@@ -1,0 +1,903 @@
+<title>Circuito Pedido–Entrega</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans+Condensed:wght@500;600;700&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
+<style>
+/* Layout: consola de operación — barra superior fija, navegación por frente a la izquierda, área de trabajo con tarjetas por rol */
+:root{
+  --bg:#F5F4F7; --surface:#FFFFFF; --sunk:#EEEBF1; --ink:#1E1A24; --muted:#675F72; --line:#E1DDE6;
+  --accent:#7B1E3F; --accent-ink:#FFFFFF; --accent-soft:#F4E5EB;
+  --ok:#23744A; --ok-soft:#E3F2E9; --warn:#9A6212; --warn-soft:#FBF0DC;
+  --bad:#B42318; --bad-soft:#FBE6E3; --info:#2B5C8A; --info-soft:#E4EDF6;
+  --f-display:'IBM Plex Sans Condensed','Arial Narrow',system-ui,sans-serif;
+  --f-body:'IBM Plex Sans',system-ui,-apple-system,'Segoe UI',sans-serif;
+  --f-mono:'IBM Plex Mono',ui-monospace,Consolas,monospace;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#131116; --surface:#1C1920; --sunk:#25212A; --ink:#ECE8F1; --muted:#A49CAE; --line:#322D38;
+  --accent:#E27C9F; --accent-ink:#1B0D13; --accent-soft:#3B1E2A;
+  --ok:#5CC28A; --ok-soft:#173326; --warn:#E5AE55; --warn-soft:#3A2B12;
+  --bad:#F27B6F; --bad-soft:#3E1C19; --info:#83AEDB; --info-soft:#1A2B3D; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#131116; --surface:#1C1920; --sunk:#25212A; --ink:#ECE8F1; --muted:#A49CAE; --line:#322D38;
+  --accent:#E27C9F; --accent-ink:#1B0D13; --accent-soft:#3B1E2A;
+  --ok:#5CC28A; --ok-soft:#173326; --warn:#E5AE55; --warn-soft:#3A2B12;
+  --bad:#F27B6F; --bad-soft:#3E1C19; --info:#83AEDB; --info-soft:#1A2B3D; color-scheme:dark}
+
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--ink);font-family:var(--f-body);font-size:14px;line-height:1.5}
+body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset-top,0px);z-index:10;background:var(--surface)}
+h1,h2,h3{font-family:var(--f-display);text-wrap:balance;margin:0;line-height:1.15}
+h1{font-size:1.9rem;font-weight:700;letter-spacing:-.01em}
+h2{font-size:1.2rem;font-weight:600}
+h3{font-size:1rem;font-weight:600}
+p{margin:0}
+.mono{font-family:var(--f-mono);font-size:.86em}
+.muted{color:var(--muted)}
+.num{font-variant-numeric:tabular-nums;text-align:right;white-space:nowrap}
+button,input,select{font:inherit;color:inherit}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+
+/* Barra superior */
+.top{position:sticky;top:env(safe-area-inset-top,0px);z-index:5;background:var(--surface);border-bottom:1px solid var(--line);
+  padding-block:10px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+.top-in{max-width:1360px;margin:0 auto;display:flex;align-items:center;gap:12px 20px;flex-wrap:wrap}
+.brand{display:flex;align-items:center;gap:10px;font-family:var(--f-display);font-weight:700;font-size:1.05rem}
+.brand-mark{width:26px;height:26px;border-radius:6px;background:var(--accent);display:grid;place-items:center;color:var(--accent-ink);font-size:.8rem;font-family:var(--f-mono)}
+.top-meta{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-left:auto}
+
+/* Estructura */
+.shell{max-width:1360px;margin:0 auto;display:grid;grid-template-columns:220px minmax(0,1fr);gap:28px;
+  padding-block:24px 72px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+nav.side{position:sticky;top:calc(env(safe-area-inset-top,0px) + 70px);align-self:start;display:flex;flex-direction:column;gap:2px}
+.nav-g{font-size:.7rem;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);padding:14px 10px 4px}
+.nav-b{display:flex;flex-direction:column;align-items:flex-start;gap:0;text-align:left;border:0;background:none;padding:8px 10px;border-radius:7px;cursor:pointer;color:var(--ink)}
+.nav-b:hover{background:var(--sunk)}
+.nav-b.on{background:var(--accent-soft);color:var(--accent)}
+.nav-b .l{font-weight:500}
+.nav-b .c{font-family:var(--f-mono);font-size:.72rem;color:var(--muted)}
+.nav-b.on .c{color:var(--accent)}
+main{min-width:0;display:flex;flex-direction:column;gap:20px}
+@media (max-width:880px){
+  .shell{grid-template-columns:minmax(0,1fr);gap:16px}
+  nav.side{position:static;flex-direction:row;overflow-x:auto;gap:4px;padding-bottom:4px;border-bottom:1px solid var(--line)}
+  .nav-g{display:none}
+  .nav-b{flex:0 0 auto}
+}
+
+/* Encabezado de vista */
+.vh{display:flex;flex-direction:column;gap:6px}
+.eyebrow{font-size:.72rem;letter-spacing:.08em;text-transform:uppercase;color:var(--accent)}
+.lead{color:var(--muted);max-width:72ch}
+.jde{border:1px dashed var(--line);border-radius:10px;padding:12px 14px;display:grid;gap:8px}
+.jde-t{font-size:.72rem;text-transform:uppercase;letter-spacing:.08em;color:var(--muted)}
+.jde ul{list-style:none;margin:0;padding:0;display:grid;gap:6px}
+.jde li{display:flex;gap:10px;align-items:baseline}
+.jde li .pill{flex:0 0 auto}
+
+/* Tarjetas y grillas */
+.card{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:16px;display:flex;flex-direction:column;gap:12px;min-width:0}
+.card-h{display:flex;justify-content:space-between;align-items:baseline;gap:10px;flex-wrap:wrap}
+.g2{display:grid;grid-template-columns:minmax(0,1.5fr) minmax(0,1fr);gap:16px;align-items:start}
+.g2e{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px;align-items:start}
+.g3{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:16px}
+@media (max-width:1080px){.g2,.g2e{grid-template-columns:minmax(0,1fr)}}
+@media (max-width:760px){.g3{grid-template-columns:minmax(0,1fr)}}
+.row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.stack{display:flex;flex-direction:column;gap:8px}
+
+/* Pills */
+.pill{display:inline-flex;align-items:center;gap:4px;padding:1px 8px;border-radius:999px;font-size:.75rem;font-weight:500;white-space:nowrap;background:var(--sunk);color:var(--muted)}
+.pill.ok{background:var(--ok-soft);color:var(--ok)}
+.pill.warn{background:var(--warn-soft);color:var(--warn)}
+.pill.bad{background:var(--bad-soft);color:var(--bad)}
+.pill.info{background:var(--info-soft);color:var(--info)}
+.pill.acc{background:var(--accent-soft);color:var(--accent)}
+
+/* Botones */
+.btn{border:1px solid var(--line);background:var(--surface);padding:6px 12px;border-radius:7px;cursor:pointer;font-weight:500;white-space:nowrap}
+.btn:hover{background:var(--sunk)}
+.btn.pri{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
+.btn.pri:hover{filter:brightness(1.08)}
+.btn.sm{padding:3px 9px;font-size:.82rem}
+.btn:disabled{opacity:.45;cursor:not-allowed}
+.lnk{border:0;background:none;color:var(--accent);cursor:pointer;padding:0;font-weight:500;text-decoration:underline;text-underline-offset:2px}
+
+/* Formularios */
+.fields{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:12px}
+.field{display:flex;flex-direction:column;gap:4px;min-width:0}
+.field label{font-size:.75rem;color:var(--muted);display:flex;gap:6px;align-items:center;flex-wrap:wrap}
+.field input,.field select,.inp{border:1px solid var(--line);background:var(--surface);border-radius:6px;padding:6px 8px;min-width:0;width:100%}
+.inp.n{width:5.5em;text-align:right;font-variant-numeric:tabular-nums}
+.ro{padding:6px 8px;border-radius:6px;background:var(--sunk);font-size:.92rem}
+.dflt{font-size:.68rem;padding:0 6px;border-radius:999px;background:var(--info-soft);color:var(--info)}
+.dflt.mod{background:var(--warn-soft);color:var(--warn)}
+
+/* Tablas */
+.tw{overflow-x:auto;margin:0 -2px}
+table.t{width:100%;border-collapse:collapse;font-size:.88rem}
+.t th{text-align:left;font-weight:500;font-size:.74rem;color:var(--muted);padding:6px 8px;border-bottom:1px solid var(--line);white-space:nowrap}
+.t td{padding:7px 8px;border-bottom:1px solid var(--line);vertical-align:middle}
+.t tr:last-child td{border-bottom:0}
+.t tr.sel td{background:var(--accent-soft)}
+.t tr.dim td{opacity:.5}
+.t td.msgs{padding-top:0;border-bottom:1px solid var(--line)}
+.t tr.has-msg td{border-bottom:0}
+
+/* Mensajes */
+.msg{display:flex;gap:8px;align-items:baseline;font-size:.84rem;padding:6px 10px;border-radius:6px}
+.msg.err{background:var(--bad-soft);color:var(--bad)}
+.msg.warn{background:var(--warn-soft);color:var(--warn)}
+.msg.info{background:var(--info-soft);color:var(--info)}
+.msg.ok{background:var(--ok-soft);color:var(--ok)}
+.msg b{font-weight:600}
+
+/* Barras */
+.bar{height:8px;border-radius:4px;background:var(--sunk);overflow:hidden;display:flex}
+.bar i{display:block;height:100%;background:var(--accent)}
+.bar i.ok{background:var(--ok)} .bar i.warn{background:var(--warn)} .bar i.bad{background:var(--bad)} .bar i.info{background:var(--info)} .bar i.mute{background:var(--muted);opacity:.5}
+.legend{display:flex;gap:12px;flex-wrap:wrap;font-size:.75rem;color:var(--muted)}
+.legend span{display:inline-flex;align-items:center;gap:5px}
+.legend i{width:10px;height:10px;border-radius:2px;display:inline-block}
+
+/* Circuito */
+.flow{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:10px}
+@media (max-width:1180px){.flow{grid-template-columns:repeat(3,minmax(0,1fr))}}
+@media (max-width:560px){.flow{grid-template-columns:minmax(0,1fr)}}
+.stage{position:relative;text-align:left;border:1px solid var(--line);background:var(--surface);border-radius:10px;padding:12px 14px;cursor:pointer;display:flex;flex-direction:column;gap:4px;min-width:0}
+.stage:hover{border-color:var(--accent)}
+.stage .s-n{font-family:var(--f-mono);font-size:.72rem;color:var(--muted)}
+.stage .s-t{font-family:var(--f-display);font-weight:600;font-size:1.02rem}
+.stage .s-v{font-family:var(--f-display);font-size:1.7rem;font-weight:700;font-variant-numeric:tabular-nums;line-height:1.1}
+.stage .s-d{font-size:.8rem;color:var(--muted)}
+.stage.alert{border-color:var(--bad)}
+.stage.alert .s-v{color:var(--bad)}
+.stage.warnb .s-v{color:var(--warn)}
+
+ol.guide{margin:0;padding-left:1.4em;display:grid;gap:8px}
+ol.guide li::marker{font-family:var(--f-mono);color:var(--accent)}
+.log{list-style:none;margin:0;padding:0;display:grid;gap:6px;max-height:330px;overflow:auto}
+.log li{display:grid;grid-template-columns:3.4em minmax(0,1fr);gap:8px;font-size:.84rem}
+
+/* Precio */
+.wf{display:grid;gap:4px}
+.wf-r{display:grid;grid-template-columns:3em minmax(0,1fr) auto auto;gap:10px;align-items:baseline;padding:5px 0;border-bottom:1px solid var(--line);font-size:.86rem}
+.wf-r:last-child{border-bottom:0}
+.wf-r.tot{font-weight:600;border-top:2px solid var(--ink);border-bottom:0}
+.matrix td{text-align:center}
+.cell{border:1px solid var(--line);background:var(--surface);border-radius:8px;padding:6px 8px;cursor:pointer;display:flex;flex-direction:column;gap:3px;align-items:center;width:100%;min-width:104px}
+.cell:hover{border-color:var(--accent)}
+.cell.sel{border-color:var(--accent);box-shadow:0 0 0 1px var(--accent)}
+.cell .a{font-weight:600;font-variant-numeric:tabular-nums}
+.cell .b{font-size:.74rem;color:var(--muted);font-variant-numeric:tabular-nums}
+
+/* Rutas */
+.trip{border:1px solid var(--line);border-radius:8px;padding:10px 12px;display:grid;gap:8px}
+.trip-h{display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap;font-size:.86rem}
+ol.stops{margin:0;padding-left:1.3em;display:grid;gap:6px;font-size:.86rem}
+ol.stops li{display:flex;flex-wrap:wrap;gap:4px 10px;align-items:center}
+ol.stops select{border:1px solid var(--line);background:var(--surface);border-radius:5px;padding:1px 4px;font-size:.78rem}
+
+/* Reglas backorder */
+.rules{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:8px}
+.rule{display:flex;gap:10px;align-items:flex-start;border:1px solid var(--line);border-radius:8px;padding:10px 12px;cursor:pointer}
+.rule:has(input:checked){border-color:var(--accent);background:var(--accent-soft)}
+.rule input{margin-top:3px;accent-color:var(--accent)}
+.rule .rt{font-weight:600}
+.rule .rd{font-size:.8rem;color:var(--muted)}
+.sliders{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:12px}
+input[type=range]{accent-color:var(--accent);width:100%}
+
+/* KPIs */
+.kpis{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:16px}
+.kpi .kv{font-family:var(--f-display);font-weight:700;font-size:2.1rem;line-height:1;font-variant-numeric:tabular-nums}
+.kpi .kn{font-weight:600}
+.kpi dl{display:grid;grid-template-columns:auto 1fr;gap:2px 12px;margin:0;font-size:.84rem}
+.kpi dt{color:var(--muted)}
+.kpi dd{margin:0;text-align:right;font-variant-numeric:tabular-nums}
+.gauge{position:relative;height:10px;border-radius:5px;background:var(--sunk)}
+.gauge i{position:absolute;inset:0 auto 0 0;border-radius:5px;background:var(--ok)}
+.phase{display:grid;grid-template-columns:minmax(0,1.3fr) minmax(0,2fr) 4.5em;gap:10px;align-items:center;font-size:.86rem}
+.pbar{height:10px;display:flex;border-radius:5px;overflow:hidden;background:var(--sunk)}
+.pbar i{background:var(--accent)} .pbar u{background:var(--accent);opacity:.3}
+
+.banner{border-radius:10px;padding:12px 14px;display:flex;gap:12px;align-items:center;flex-wrap:wrap;justify-content:space-between}
+.banner.ok{background:var(--ok-soft);color:var(--ok)}
+
+#toast{position:fixed;left:50%;bottom:calc(20px + env(safe-area-inset-bottom,0px));transform:translateX(-50%) translateY(20px);opacity:0;pointer-events:none;
+  background:var(--ink);color:var(--bg);padding:10px 16px;border-radius:8px;font-size:.88rem;max-width:min(560px,calc(100vw - 32px));transition:opacity .2s, transform .2s;z-index:20}
+#toast.on{opacity:1;transform:translateX(-50%) translateY(0)}
+@media (prefers-reduced-motion: reduce){#toast{transition:none}}
+</style>
+
+<div class="top">
+  <div class="top-in">
+    <div class="brand"><span class="brand-mark">OE</span>Circuito pedido → entrega</div>
+    <span class="pill acc">Demo · datos de ejemplo</span>
+    <div class="top-meta">
+      <span class="muted">Fecha simulada</span><span class="mono" id="clock">20/10/2026 09:12</span>
+      <button class="btn sm" id="reset" type="button">Reiniciar demo</button>
+    </div>
+  </div>
+</div>
+
+<div class="shell">
+  <nav class="side" id="nav" aria-label="Frentes de trabajo"></nav>
+  <main id="main"></main>
+</div>
+<div id="toast" role="status" aria-live="polite"></div>
+
+<script>
+/* ===== Datos maestros de ejemplo ===== */
+const TODAY='2026-10-20';
+const ITEMS=[
+  {id:'MAL-RES-750',d:'Malbec Reserva 750 ml',uxc:6,ums:['CJ','BT'],cjp:80,precio:54000,costo:29000},
+  {id:'CAB-CLA-750',d:'Cabernet Sauvignon Clásico 750 ml',uxc:6,ums:['CJ','BT'],cjp:80,precio:39000,costo:22500},
+  {id:'TOR-JOV-750',d:'Torrontés Joven 750 ml',uxc:6,ums:['CJ','BT'],cjp:80,precio:33600,costo:19800},
+  {id:'BLD-ALT-750',d:'Blend de Altura 750 ml',uxc:6,ums:['CJ','BT'],cjp:80,precio:78000,costo:38000},
+  {id:'ESP-BRU-750',d:'Espumante Brut Nature 750 ml',uxc:6,ums:['CJ','BT'],cjp:80,precio:61200,costo:33000},
+  {id:'BON-BIB-3L',d:'Bonarda Bag-in-Box 3 L',uxc:4,ums:['CJ'],cjp:60,precio:44000,costo:27000},
+];
+const ITEM=Object.fromEntries(ITEMS.map(i=>[i.id,i]));
+const ZONES={MZA:'Gran Mendoza',CUYO:'San Juan / San Luis',CENTRO:'Córdoba / Rosario',AMBA:'AMBA'};
+const CONDS={RET:'Retiro en bodega',REP:'Reparto propio',FLI:'Flete incluido (tercerizado)',EXP:'Expreso a cargo del cliente'};
+const ROUTES=[
+  {id:'R-MZA-01',d:'Gran Mendoza Norte',z:'MZA',dias:'Lun · Mié · Vie',veh:'UT-03 Utilitario',cap:4,lead:1},
+  {id:'R-MZA-02',d:'Gran Mendoza Sur',z:'MZA',dias:'Mar · Jue',veh:'CA-12 Camión chasis',cap:10,lead:1},
+  {id:'R-CUYO-01',d:'San Juan / San Luis',z:'CUYO',dias:'Martes',veh:'CA-07 Camión chasis',cap:6,lead:2},
+  {id:'R-CEN-01',d:'Córdoba / Rosario',z:'CENTRO',dias:'Jueves',veh:'Semi tercerizado',cap:26,lead:3},
+  {id:'R-AMBA-N',d:'AMBA Norte',z:'AMBA',dias:'Lun · Jue',veh:'Semi tercerizado',cap:26,lead:3},
+  {id:'RET',d:'Retiro en bodega / expreso',z:null,dias:'Lun a Vie 8 a 16 h',veh:null,cap:0,lead:0},
+];
+const ROUTE=Object.fromEntries(ROUTES.map(r=>[r.id,r]));
+const CUSTS=[
+  {id:'C1040',n:'Distribuidora Cuyo SRL',tipo:'Distribuidor',prio:'A',esq:'Gran cuenta',z:'CUYO',r:'R-CUYO-01',cond:'REP',dir:'Av. San Martín 2140, San Juan',ums:['CJ'],cred:25e6},
+  {id:'C2210',n:'Supermercados del Valle SA',tipo:'Supermercado',prio:'A',esq:'Gran cuenta',z:'MZA',r:'R-MZA-02',cond:'REP',dir:'Carril Rodríguez Peña 3300, Godoy Cruz',ums:['CJ'],cred:8e6},
+  {id:'C3055',n:'Vinoteca Los Andes',tipo:'Vinoteca',prio:'B',esq:'Estándar',z:'MZA',r:'RET',cond:'RET',dir:'Arístides Villanueva 410, Mendoza',ums:['CJ','BT'],cred:3e6},
+  {id:'C4120',n:'Mayorista Pampa SA',tipo:'Distribuidor',prio:'A',esq:'Gran cuenta',z:'CENTRO',r:'R-CEN-01',cond:'FLI',dir:'Ruta 9 km 694, Córdoba',ums:['CJ'],cred:30e6},
+  {id:'C5008',n:'Vinería Palermo',tipo:'Vinoteca',prio:'B',esq:'Estándar',z:'AMBA',r:'R-AMBA-N',cond:'FLI',dir:'Honduras 5120, CABA',ums:['CJ','BT'],cred:6e6},
+  {id:'C6031',n:'Restó La Alameda',tipo:'Horeca',prio:'C',esq:'Estándar',z:'MZA',r:'R-MZA-01',cond:'REP',dir:'',ums:['CJ','BT'],cred:1.5e6},
+  {id:'C7019',n:'Almacén Gourmet Rosario',tipo:'Vinoteca',prio:'C',esq:'Estándar',z:'CENTRO',r:'RET',cond:'EXP',dir:'Pellegrini 1650, Rosario',ums:['CJ','BT'],cred:1.2e6},
+];
+const CUST=Object.fromEntries(CUSTS.map(c=>[c.id,c]));
+const HOLDS={PI:'Pedido incompleto: falta la dirección de entrega',PE:'La condición de envío no coincide con la ruta',CR:'Supera el límite de crédito'};
+const RULES={
+  hoy:{t:'Como hoy',d:'Sin criterio: lo último que se carga se libera primero.'},
+  antig:{t:'Antigüedad',d:'El pedido más viejo se libera primero (FIFO).'},
+  cliente:{t:'Prioridad de cliente',d:'Clientes A, después B y C; a igual prioridad, el más viejo.'},
+  margen:{t:'Margen',d:'Primero las líneas con mayor margen.'},
+  comb:{t:'Combinada',d:'Puntaje ponderado de antigüedad, cliente y margen.'},
+};
+
+/* ===== Utilidades ===== */
+const $=s=>document.querySelector(s);
+const nf1=new Intl.NumberFormat('es-AR',{maximumFractionDigits:1});
+const nf0=new Intl.NumberFormat('es-AR',{maximumFractionDigits:0});
+const n1=v=>nf1.format(v), n0=v=>nf0.format(v);
+const money=v=>'$ '+nf0.format(Math.round(v));
+const pct=v=>(v>0?'+':v<0?'−':'')+nf1.format(Math.abs(v))+' %';
+const esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+function addDays(iso,n){const d=new Date(iso+'T12:00:00');d.setDate(d.getDate()+n);return d.toISOString().slice(0,10)}
+function diffDays(a,b){return Math.round((new Date(b+'T12:00:00')-new Date(a+'T12:00:00'))/864e5)}
+const dm=iso=>{const p=iso.split('-');return p[2]+'/'+p[1]};
+const toCJ=l=>l.um==='BT'?l.qty/ITEM[l.item].uxc:l.qty;
+const isComm=l=>l.st==='soft'||l.st==='hard';
+
+/* ===== Precios (Advanced Pricing simulado) ===== */
+function priceCore({esq,cond,zona,item,um,cj}){
+  const P=state.pricing, it=ITEM[item];
+  const base=um==='BT'?it.precio/it.uxc:it.precio;
+  const adj=[];
+  if(um==='BT') adj.push({seq:15,n:'Recargo por venta fraccionada (BT)',p:P.fraccion});
+  if(esq==='Gran cuenta') adj.push({seq:20,n:'Esquema de cliente: Gran cuenta',p:P.granCuenta});
+  if(cond==='RET') adj.push({seq:30,n:'Bonificación por retiro en bodega',p:P.retiro,env:1});
+  if(cond==='REP') adj.push({seq:30,n:'Recargo reparto propio · zona '+zona,p:P.rep[zona],env:1});
+  if(cond==='FLI') adj.push({seq:30,n:'Flete incluido · zona '+zona,p:P.fli[zona],env:1});
+  if(cj>=P.vol2.min) adj.push({seq:40,n:'Bonificación por volumen ≥ '+P.vol2.min+' cj',p:P.vol2.pct});
+  else if(cj>=P.vol1.min) adj.push({seq:40,n:'Bonificación por volumen ≥ '+P.vol1.min+' cj',p:P.vol1.pct});
+  const neg=adj.filter(a=>a.p<0).reduce((s,a)=>s+a.p,0);
+  if(neg<P.tope) adj.push({seq:90,n:'Tope de bonificaciones acumuladas ('+pct(P.tope)+')',p:P.tope-neg});
+  const p=adj.reduce((s,a)=>s+a.p,0);
+  return {base,adj,p,final:base*(1+p/100)};
+}
+const priceFor=(custId,cond,item,um,cj)=>priceCore({esq:CUST[custId].esq,cond,zona:CUST[custId].z,item,um,cj});
+const condRouteOk=(cond,ruta)=>(cond==='RET'||cond==='EXP')===(ruta==='RET');
+
+/* ===== Estado inicial ===== */
+let state;
+function seed(){
+  state={
+    view:'resumen',
+    inv:{'MAL-RES-750':830,'CAB-CLA-750':272,'TOR-JOV-750':80,'BLD-ALT-750':6,'ESP-BRU-750':25,'BON-BIB-3L':240},
+    orders:[], nextSO:264150, clock:9*60+12,
+    consts:{hardAt:'pick',futDays:7,staleDays:7},
+    pricing:{granCuenta:-1.5,retiro:-4,rep:{MZA:0,CUYO:2,CENTRO:3,AMBA:3},fli:{MZA:2,CUYO:4,CENTRO:5,AMBA:6},
+      vol1:{min:80,pct:-2},vol2:{min:240,pct:-3.5},fraccion:8,tope:-6,
+      cp:{MZA:900,CUYO:2400,CENTRO:3600,AMBA:4300},ct:{MZA:1300,CUYO:2700,CENTRO:3400,AMBA:3900}},
+    ps:{item:'MAL-RES-750',esq:'Estándar',cj:100,cond:'REP',zona:'CUYO'},
+    bo:{rule:'antig',w:{a:50,c:30,m:20},partial:true,runs:0,last:null},
+    receipt:false, trips:{}, slips:[], nextSlip:7001, lastSaved:null,
+    log:[{t:'06:00',m:'R42118 · corrida programada: no hay stock disponible para liberar backorder.'}],
+  };
+  const L=(item,qty,st,um='CJ')=>({item,um,qty,st});
+  const mk=(so,cust,date,req,lines,hold=[])=>{
+    const c=CUST[cust], cj=lines.reduce((s,l)=>s+toCJ(l),0);
+    lines.forEach(l=>{l.price=priceFor(cust,c.cond,l.item,l.um,cj).final; l.at=date});
+    state.orders.push({so,cust,date,req,cond:c.cond,ruta:c.r,dir:c.dir,hold,status:'abierto',lines,firstOk:true});
+  };
+  mk(264101,'C2210','2026-10-06','2026-10-08',[L('MAL-RES-750',40,'soft')],['CR']);
+  mk(264108,'C6031','2026-10-08','2026-10-10',[L('CAB-CLA-750',12,'soft')],['PI']);
+  mk(264112,'C1040','2026-10-09','2026-10-14',[L('ESP-BRU-750',20,'bo'),L('BLD-ALT-750',15,'bo')]);
+  mk(264118,'C5008','2026-10-13','2026-10-16',[L('BLD-ALT-750',24,'bo')]);
+  mk(264121,'C4120','2026-10-14','2026-10-17',[L('ESP-BRU-750',30,'bo')]);
+  mk(264125,'C7019','2026-10-16','2026-10-19',[L('BLD-ALT-750',10,'bo'),L('ESP-BRU-750',6,'bo')]);
+  mk(264133,'C2210','2026-10-18','2026-10-21',[L('TOR-JOV-750',40,'bo')]);
+  mk(264136,'C3055','2026-10-19','2026-10-20',[L('MAL-RES-750',10,'soft'),L('BLD-ALT-750',12,'bo'),L('ESP-BRU-750',8,'bo')]);
+  mk(264139,'C1040','2026-10-19','2026-10-22',[L('MAL-RES-750',100,'soft'),L('BON-BIB-3L',60,'soft')]);
+  mk(264140,'C2210','2026-10-19','2026-10-21',[L('MAL-RES-750',120,'soft'),L('CAB-CLA-750',60,'soft')]);
+  mk(264141,'C3055','2026-10-19','2026-10-20',[L('MAL-RES-750',20,'soft'),L('BLD-ALT-750',6,'soft')]);
+  mk(264142,'C1040','2026-10-19','2026-10-22',[L('MAL-RES-750',160,'soft'),L('CAB-CLA-750',80,'soft'),L('TOR-JOV-750',50,'soft')]);
+  mk(264143,'C4120','2026-10-20','2026-10-23',[L('MAL-RES-750',200,'soft'),L('BON-BIB-3L',90,'soft'),L('CAB-CLA-750',40,'soft')]);
+  mk(264144,'C5008','2026-10-20','2026-10-23',[L('MAL-RES-750',60,'soft'),L('ESP-BRU-750',25,'soft')]);
+  mk(264146,'C7019','2026-10-20','2026-10-23',[L('TOR-JOV-750',30,'soft'),L('CAB-CLA-750',20,'soft')]);
+  mk(264147,'C2210','2026-10-20','2026-10-21',[L('BON-BIB-3L',40,'soft')]);
+  state.draft=newDraft('C1040',[{item:'MAL-RES-750',um:'CJ',qty:60},{item:'CAB-CLA-750',um:'CJ',qty:90}]);
+}
+function newDraft(cust,lines){
+  const c=CUST[cust];
+  return {cust,cond:c.cond,ruta:c.r,dir:c.dir,req:addDays(TODAY,ROUTE[c.r].lead),lines,sel:0};
+}
+const clockStr=()=>{const h=Math.floor(state.clock/60)%24,m=state.clock%60;return String(h).padStart(2,'0')+':'+String(m).padStart(2,'0')};
+function log(m,adv=3){state.clock+=adv;state.log.unshift({t:clockStr(),m})}
+
+/* ===== Cálculos de stock ===== */
+function sums(){
+  const s={};ITEMS.forEach(i=>s[i.id]={soft:0,hard:0,fut:0,bo:0});
+  state.orders.forEach(o=>o.lines.forEach(l=>{if(s[l.item][l.st]!==undefined)s[l.item][l.st]+=toCJ(l)}));
+  return s;
+}
+const avail=(id,s)=>state.inv[id]-s[id].soft-s[id].hard;
+function staleLines(){
+  const out=[];
+  state.orders.forEach(o=>{
+    if(o.status!=='abierto')return;
+    const age=diffDays(o.date,TODAY);
+    o.lines.forEach(l=>{ if(isComm(l)&&(o.hold.length||age>state.consts.staleDays)) out.push({o,l,age}) });
+  });
+  return out;
+}
+function boLines(){
+  const out=[];
+  state.orders.forEach(o=>o.lines.forEach(l=>{
+    if(l.st!=='bo')return;
+    const it=ITEM[l.item], cost=l.um==='BT'?it.costo/it.uxc:it.costo;
+    out.push({o,l,age:diffDays(o.date,TODAY),prio:CUST[o.cust].prio,margin:(l.price-cost)/l.price,held:o.hold.length>0});
+  }));
+  return out;
+}
+function boAvgAge(){const b=boLines();return b.length?b.reduce((s,x)=>s+x.age,0)/b.length:0}
+
+/* ===== Backorder: simulación de R42118 ===== */
+function sortBO(list,rule){
+  const pr={A:1,B:.5,C:0}, a=[...list];
+  const maxA=Math.max(1,...a.map(x=>x.age)), ms=a.map(x=>x.margin), mn=Math.min(...ms), mx=Math.max(...ms);
+  const W=state.bo.w, tw=(W.a+W.c+W.m)||1;
+  a.forEach(x=>x.score=(W.a*x.age/maxA+W.c*pr[x.prio]+W.m*((x.margin-mn)/((mx-mn)||1)))/tw);
+  const byAge=(p,q)=>q.age-p.age||p.o.so-q.o.so;
+  if(rule==='hoy') a.sort((p,q)=>q.o.so-p.o.so);
+  if(rule==='antig') a.sort(byAge);
+  if(rule==='cliente') a.sort((p,q)=>pr[q.prio]-pr[p.prio]||byAge(p,q));
+  if(rule==='margen') a.sort((p,q)=>q.margin-p.margin||byAge(p,q));
+  if(rule==='comb') a.sort((p,q)=>q.score-p.score||byAge(p,q));
+  return a;
+}
+function simulate(rule){
+  const s=sums(), av={}; ITEMS.forEach(i=>av[i.id]=Math.max(0,avail(i.id,s)));
+  const all=boLines(), list=sortBO(all.filter(x=>!x.held),rule);
+  list.forEach(x=>{
+    const it=ITEM[x.l.item], avU=x.l.um==='BT'?Math.floor(av[it.id]*it.uxc):Math.floor(av[it.id]);
+    let rel=Math.min(avU,x.l.qty); if(!state.bo.partial&&rel<x.l.qty) rel=0;
+    x.rel=rel; av[it.id]-=x.l.um==='BT'?rel/it.uxc:rel;
+  });
+  const relCJ=list.reduce((s,x)=>s+(x.l.um==='BT'?x.rel/ITEM[x.l.item].uxc:x.rel),0);
+  const remain=all.map(x=>({age:x.age,cj:toCJ(x.l)-(x.rel?(x.l.um==='BT'?x.rel/ITEM[x.l.item].uxc:x.rel):0)})).filter(x=>x.cj>0.001);
+  const remCJ=remain.reduce((s,x)=>s+x.cj,0);
+  const avgAge=remCJ?remain.reduce((s,x)=>s+x.age*x.cj,0)/remCJ:0;
+  const maxAge=remain.length?Math.max(...remain.map(x=>x.age)):0;
+  const full=list.filter(x=>x.rel===x.l.qty).length;
+  const aCJ=list.filter(x=>x.prio==='A').reduce((s,x)=>s+(x.rel?(x.l.um==='BT'?x.rel/ITEM[x.l.item].uxc:x.rel):0),0);
+  return {list,relCJ,avgAge,maxAge,full,aShare:relCJ?aCJ/relCJ:0};
+}
+
+/* ===== Rutas ===== */
+const pallets=o=>o.lines.filter(isComm).reduce((s,l)=>s+toCJ(l)/ITEM[l.item].cjp,0);
+const readyFor=r=>state.orders.filter(o=>o.status==='abierto'&&!o.hold.length&&o.ruta===r&&o.lines.some(isComm));
+function assign(r){
+  const R=ROUTE[r], n=state.trips[r]||1, pr={A:0,B:1,C:2};
+  const list=readyFor(r).sort((a,b)=>a.req.localeCompare(b.req)||pr[CUST[a.cust].prio]-pr[CUST[b.cust].prio]||a.so-b.so);
+  if(r==='RET') return {trips:[{load:list.reduce((s,o)=>s+pallets(o),0),orders:list}],over:[]};
+  const trips=Array.from({length:n},()=>({load:0,orders:[]})), over=[];
+  list.forEach(o=>{const p=pallets(o),t=trips.find(t=>t.load+p<=R.cap+1e-9); if(t){t.load+=p;t.orders.push(o)} else over.push(o)});
+  return {trips,over};
+}
+
+/* ===== Pedido en carga ===== */
+function evalDraft(){
+  const d=state.draft, c=CUST[d.cust], s=sums(), used={};
+  const cj=d.lines.reduce((t,l)=>t+(l.qty>0&&ITEM[l.item].ums.includes(l.um)?toCJ(l):0),0);
+  const fut=diffDays(TODAY,d.req)>state.consts.futDays;
+  const seen={};
+  const lines=d.lines.map(l=>{
+    const it=ITEM[l.item], val=[];
+    if(!c.ums.includes(l.um)) val.push(['err',`${c.n} compra solo por ${c.ums.join(' / ')}. Cargá la cantidad en cajas.`]);
+    if(!it.ums.includes(l.um)) val.push(['err',`${it.d} no tiene conversión a ${l.um}: se vende por caja de ${it.uxc}.`]);
+    if(!(l.qty>0)) val.push(['err','Ingresá una cantidad mayor a cero.']);
+    if(seen[l.item]) val.push(['warn','Este ítem ya está en otra línea del pedido.']); seen[l.item]=1;
+    const ok=!val.some(v=>v[0]==='err');
+    if(ok&&l.um==='BT'&&l.qty%it.uxc===0) val.push(['warn',`${l.qty} botellas son ${l.qty/it.uxc} cajas cerradas: cargalo en CJ para evitar el recargo por fraccionado.`]);
+    let cq=0,bo=0,fq=0;
+    if(ok){
+      if(fut) fq=l.qty;
+      else{
+        const av=Math.max(0,avail(l.item,s)-(used[l.item]||0));
+        const avU=l.um==='BT'?Math.floor(av*it.uxc):Math.floor(av);
+        cq=Math.min(avU,l.qty); bo=l.qty-cq; used[l.item]=(used[l.item]||0)+(l.um==='BT'?cq/it.uxc:cq);
+        if(bo>0) val.push(['info',`Disponible ${n1(av)} cj: se comprometen ${cq} ${l.um} y ${bo} quedan en backorder.`]);
+      }
+    }
+    const price=it.ums.includes(l.um)?priceFor(d.cust,d.cond,l.item,l.um,cj):null;
+    return {...l,val,ok,cq,bo,fq,price,amount:price?price.final*(l.qty||0):0};
+  });
+  const total=lines.reduce((t,l)=>t+l.amount,0);
+  const holds=[];
+  if(!d.dir.trim()) holds.push('PI');
+  if(!condRouteOk(d.cond,d.ruta)) holds.push('PE');
+  if(total>c.cred) holds.push('CR');
+  return {lines,total,cj,holds,fut,errs:lines.some(l=>!l.ok)};
+}
+
+/* ===== Vistas ===== */
+const NAV=[
+  {g:'Visión general'},
+  {v:'resumen',l:'Resumen del circuito',c:'Guión de la demo'},
+  {g:'Frentes de trabajo'},
+  {v:'pedido',l:'Armado del pedido',c:'P4210 · hold codes'},
+  {v:'compromiso',l:'Compromiso',c:'P41001 · soft / hard'},
+  {v:'backorder',l:'Liberación de backorder',c:'R42118 programado'},
+  {v:'ruta',l:'Armado de ruta',c:'42/RT · R42520'},
+  {v:'precios',l:'Precios según envío',c:'Advanced Pricing'},
+  {g:'Seguimiento'},
+  {v:'indicadores',l:'Indicadores de éxito',c:'Línea base vs. meta'},
+];
+function head(eyebrow,title,lead,jde){
+  return `<header class="vh"><div class="eyebrow mono">${eyebrow}</div><h1>${title}</h1><p class="lead">${lead}</p></header>
+  <div class="jde"><span class="jde-t">Cómo se resuelve en JDE</span><ul>${jde.map(([t,x])=>`<li><span class="pill ${t==='c'?'info':'warn'}">${t==='c'?'Configuración':'Desarrollo'}</span><span>${x}</span></li>`).join('')}</ul></div>`;
+}
+function ordPill(o){
+  if(o.hold.length) return `<span class="pill bad">Retenido</span>`;
+  if(o.status==='desp') return `<span class="pill ok">Despachado</span>`;
+  if(o.status==='pick') return `<span class="pill info">Pick slip ${o.slip||''}</span>`;
+  if(o.lines.every(l=>l.st==='bo')) return `<span class="pill warn">Backorder</span>`;
+  if(o.lines.some(l=>l.st==='fut')) return `<span class="pill">Compromiso futuro</span>`;
+  if(o.lines.some(l=>l.st==='bo')) return `<span class="pill warn">Parcial en BO</span>`;
+  return `<span class="pill">Comprometido</span>`;
+}
+const opt=(v,t,sel)=>`<option value="${esc(v)}"${v===sel?' selected':''}>${esc(t)}</option>`;
+
+const VIEWS={};
+
+VIEWS.resumen=()=>{
+  const s=sums(), held=state.orders.filter(o=>o.hold.length&&o.status==='abierto').length;
+  const comm=ITEMS.reduce((t,i)=>t+s[i.id].soft+s[i.id].hard,0), stale=staleLines();
+  const bo=boLines(), ready=ROUTES.reduce((t,r)=>t+readyFor(r.id).length,0);
+  const pick=state.slips.filter(x=>x.status==='impreso').length, desp=state.orders.filter(o=>o.status==='desp').length;
+  const st=[
+    {v:'pedido',t:'Armado del pedido',n:held,d:'pedidos retenidos por datos incompletos o crédito',cls:held?'warnb':''},
+    {v:'compromiso',t:'Compromiso',n:n0(comm),d:`cajas comprometidas · ${stale.length} líneas sin salida`,cls:stale.length?'alert':''},
+    {v:'backorder',t:'Backorder',n:bo.length,d:`líneas pendientes · ${n1(boAvgAge())} días de antigüedad promedio`,cls:bo.length?'warnb':''},
+    {v:'ruta',t:'Armado de ruta',n:ready,d:'pedidos listos para consolidar por ruta'},
+    {v:'ruta',t:'Picking',n:pick,d:'pick slips consolidados impresos'},
+    {v:'ruta',t:'Entrega',n:desp,d:'pedidos despachados en esta demo'},
+  ];
+  const PH=[['Diagnóstico',2,3],['Diseño to-be',2,3],['Configuración y desarrollo',4,8],['Pruebas y capacitación',2,3],['Puesta en marcha y estabilización',2,4]];
+  return `<header class="vh"><div class="eyebrow mono">Proyecto de mejora logística sobre JDE</div>
+    <h1>Del pedido a la entrega, con reglas claras y precio que refleja el envío</h1>
+    <p class="lead">Esta demo recorre los cinco frentes del proyecto sobre datos de ejemplo de una bodega. Cada pantalla muestra cómo quedaría la operación usando lo estándar de JDE (Sales Order Management, Advanced Pricing y Transportation) y marca dónde hace falta desarrollo.</p></header>
+  <div class="flow">${st.map((x,i)=>`<button class="stage ${x.cls||''}" data-act="go" data-arg="${x.v}" type="button"><span class="s-n">Paso ${i+1}</span><span class="s-t">${x.t}</span><span class="s-v">${x.n}</span><span class="s-d">${x.d}</span></button>`).join('')}</div>
+  <div class="g2">
+    <section class="card"><div class="card-h"><h2>Guión de la demo</h2><span class="muted">≈ 15 minutos</span></div>
+      <ol class="guide">
+        <li><button class="lnk" data-act="go" data-arg="pedido" type="button">Armado del pedido</button>: grabá el pedido de Distribuidora Cuyo. Ruta, condición de envío y precio salen del cliente, y 30 cajas de Cabernet quedan en backorder.</li>
+        <li>Cambiá la condición a <b>Retiro en bodega</b>: el precio se recalcula con la bonificación y aparece la retención PE porque la ruta no coincide.</li>
+        <li><button class="lnk" data-act="go" data-arg="compromiso" type="button">Compromiso</button>: liberá el stock que tienen tomado los pedidos retenidos desde hace más de una semana.</li>
+        <li><button class="lnk" data-act="go" data-arg="backorder" type="button">Backorder</button>: registrá la recepción de la OC 4471, compará las reglas y ejecutá la liberación.</li>
+        <li><button class="lnk" data-act="go" data-arg="ruta" type="button">Armado de ruta</button>: la ruta San Juan / San Luis se queda sin lugar. Agregá un viaje, generá el pick slip consolidado y confirmá el despacho.</li>
+        <li><button class="lnk" data-act="go" data-arg="precios" type="button">Precios según envío</button>: ajustá el recargo por zona hasta cubrir el costo logístico.</li>
+        <li><button class="lnk" data-act="go" data-arg="indicadores" type="button">Indicadores</button>: mirá cómo se movieron contra la línea base.</li>
+      </ol></section>
+    <section class="card"><div class="card-h"><h2>Actividad</h2><span class="mono muted">hoy</span></div>
+      <ul class="log">${state.log.map(x=>`<li><span class="mono muted">${x.t}</span><span>${esc(x.m)}</span></li>`).join('')}</ul></section>
+  </div>
+  <section class="card"><div class="card-h"><h2>Plan de trabajo estimado</h2><span class="muted">12 a 21 semanas en cinco fases consecutivas</span></div>
+    <div class="stack">${PH.map(([n,a,b])=>`<div class="phase"><span>${n}</span><div class="pbar" aria-hidden="true"><i style="width:${a/8*100}%"></i><u style="width:${(b-a)/8*100}%"></u></div><span class="mono num">${a}–${b} sem</span></div>`).join('')}</div>
+    <div class="legend"><span><i style="background:var(--accent)"></i>mínimo</span><span><i style="background:var(--accent);opacity:.3"></i>rango hasta el máximo</span></div>
+    <div class="g2e">
+      <div class="msg info"><span><b>Ola 1 · Compromiso y backorder.</b> Se resuelve casi todo por configuración y da resultados rápido.</span></div>
+      <div class="msg info"><span><b>Ola 2 · Ruta y precios por envío.</b> Mayor impacto comercial; requiere acordar reglas con Comercial y Administración.</span></div>
+    </div></section>`;
+};
+
+VIEWS.pedido=()=>{
+  const d=state.draft, c=CUST[d.cust], E=evalDraft(), sel=E.lines[d.sel]||E.lines[0];
+  const s=sums();
+  const tag=(v,def)=>`<span class="dflt ${v===def?'':'mod'}">${v===def?'por defecto':'modificado'}</span>`;
+  const saved=state.lastSaved&&state.orders.find(o=>o.so===state.lastSaved);
+  const recent=[...state.orders].sort((a,b)=>b.so-a.so);
+  return head('Frente 1 · Sales Order Management','Armado del pedido',
+    'Pantalla de carga simplificada: al elegir el cliente se completan sucursal, ruta, condición de envío y dirección. Las validaciones avisan los errores de ítem y unidad de medida antes de grabar, y los pedidos incompletos quedan retenidos con un código.',
+    [['c','Valores por defecto desde las instrucciones de facturación del cliente (P03013): ruta 42/RT, zona 42/ZN y condición de envío 42/FR.'],
+     ['c','Códigos de retención (42/HC) y su liberación controlada por responsable (P43070).'],
+     ['d','Pantalla de carga simplificada como formulario personalizado o UDO sobre P4210, con validaciones de UM por cliente.']])+`
+  ${saved?`<div class="banner ok"><span><b>Pedido ${saved.so} grabado.</b> ${saved.hold.length?'Quedó retenido ('+saved.hold.join(', ')+').':'Pasa a compromiso y queda listo para ruta.'} ${saved.lines.some(l=>l.st==='bo')?'Tiene líneas en backorder.':''}</span><span class="row"><button class="btn sm" data-act="go" data-arg="compromiso" type="button">Ver compromiso</button><button class="btn sm" data-act="go" data-arg="ruta" type="button">Ver ruta</button></span></div>`:''}
+  <div class="g2">
+    <section class="card">
+      <div class="card-h"><h2>Nuevo pedido de venta</h2><span class="mono muted">Tipo SO · Sucursal MZA01 Bodega Maipú</span></div>
+      <div class="fields">
+        <div class="field"><label for="f-cust">Cliente</label><select id="f-cust" data-f="d.cust">${CUSTS.map(x=>opt(x.id,x.id+' · '+x.n,d.cust)).join('')}</select></div>
+        <div class="field"><label for="f-cond">Condición de envío ${tag(d.cond,c.cond)}</label><select id="f-cond" data-f="d.cond">${Object.entries(CONDS).map(([k,v])=>opt(k,k+' · '+v,d.cond)).join('')}</select></div>
+        <div class="field"><label for="f-ruta">Ruta ${tag(d.ruta,c.r)}</label><select id="f-ruta" data-f="d.ruta">${ROUTES.map(r=>opt(r.id,r.id+' · '+r.d,d.ruta)).join('')}</select></div>
+        <div class="field"><label for="f-req">Fecha de entrega</label><input id="f-req" type="date" value="${d.req}" min="${TODAY}" data-f="d.req"></div>
+        <div class="field" style="grid-column:1/-1"><label for="f-dir">Dirección de entrega ${c.dir?tag(d.dir,c.dir):'<span class="dflt mod">falta en el maestro</span>'}</label><input id="f-dir" type="text" value="${esc(d.dir)}" placeholder="Calle, número, localidad" data-f="d.dir"></div>
+      </div>
+      <div class="tw"><table class="t">
+        <thead><tr><th>Ítem</th><th>UM</th><th class="num">Cantidad</th><th class="num">Disponible</th><th class="num">Precio unit.</th><th class="num">Importe</th><th></th></tr></thead>
+        <tbody>${E.lines.map((l,i)=>`<tr class="${i===d.sel?'sel':''} ${l.val.length?'has-msg':''}">
+          <td><select class="inp" id="l-item-${i}" data-f="l.item:${i}" aria-label="Ítem línea ${i+1}">${ITEMS.map(x=>opt(x.id,x.id+' · '+x.d,l.item)).join('')}</select></td>
+          <td><select class="inp" id="l-um-${i}" data-f="l.um:${i}" aria-label="Unidad de medida línea ${i+1}" style="width:5em">${['CJ','BT'].map(u=>opt(u,u,l.um)).join('')}</select></td>
+          <td class="num"><input class="inp n" id="l-qty-${i}" type="number" min="0" step="1" value="${l.qty}" data-f="l.qty:${i}" aria-label="Cantidad línea ${i+1}"></td>
+          <td class="num">${n1(Math.max(0,avail(l.item,s)))} cj</td>
+          <td class="num">${l.price?`<button class="lnk" data-act="selLine" data-arg="${i}" type="button">${money(l.price.final)}</button>`:'—'}</td>
+          <td class="num">${l.amount?money(l.amount):'—'}</td>
+          <td><button class="btn sm" data-act="delLine" data-arg="${i}" type="button" aria-label="Quitar línea ${i+1}"${E.lines.length<2?' disabled':''}>Quitar</button></td></tr>
+          ${l.val.length?`<tr><td colspan="7" class="msgs"><div class="stack">${l.val.map(([k,m])=>`<div class="msg ${k}">${esc(m)}</div>`).join('')}</div></td></tr>`:''}`).join('')}</tbody>
+      </table></div>
+      <div class="row" style="justify-content:space-between">
+        <button class="btn" data-act="addLine" type="button">Agregar línea</button>
+        <div class="row"><span class="muted">Total ${n1(E.cj)} cj ·</span><b class="num">${money(E.total)}</b><button class="btn pri" data-act="save" type="button"${E.errs?' disabled':''}>Grabar pedido</button></div>
+      </div>
+      ${E.errs?`<div class="msg err">Corregí las líneas marcadas en rojo para poder grabar.</div>`:''}
+    </section>
+    <div class="stack" style="gap:16px">
+      <section class="card"><h2>Resultado al grabar</h2>
+        ${E.holds.length?E.holds.map(h=>`<div class="msg err"><span><b>${h}</b> · ${HOLDS[h]}${h==='PE'?` <button class="lnk" data-act="fixRoute" type="button">Ajustar ruta</button>`:''}</span></div>`).join('')+`<p class="muted">El pedido se graba igual, pero no pasa a depósito hasta que se libere la retención.</p>`
+          :`<div class="msg ok">Sin retenciones: pasa directo a compromiso y armado de ruta.</div>`}
+        ${E.fut?`<div class="msg info">La entrega es dentro de más de ${state.consts.futDays} días: el stock se compromete más adelante (compromiso futuro).</div>`:''}
+        <div class="tw"><table class="t"><thead><tr><th>Ítem</th><th class="num">Compromete</th><th class="num">Backorder</th></tr></thead><tbody>
+          ${E.lines.filter(l=>l.ok).map(l=>`<tr><td class="mono">${l.item}</td><td class="num">${l.fq?l.fq+' '+l.um+' (futuro)':l.cq+' '+l.um}</td><td class="num">${l.bo?`<span class="pill warn">${l.bo} ${l.um}</span>`:'—'}</td></tr>`).join('')}
+        </tbody></table></div></section>
+      ${sel&&sel.price?`<section class="card"><div class="card-h"><h2>Precio de la línea ${d.sel+1}</h2><span class="mono muted">${sel.item} · ${sel.um}</span></div>
+        <div class="wf"><div class="wf-r"><span class="mono muted">10</span><span>Precio base de lista</span><span></span><span class="num">${money(sel.price.base)}</span></div>
+        ${sel.price.adj.map(a=>`<div class="wf-r"><span class="mono muted">${a.seq}</span><span>${a.n}${a.env?' <span class="pill acc">envío</span>':''}</span><span class="num muted">${pct(a.p)}</span><span class="num">${money(sel.price.base*a.p/100)}</span></div>`).join('')}
+        <div class="wf-r tot"><span></span><span>Precio final</span><span class="num">${pct(sel.price.p)}</span><span class="num">${money(sel.price.final)}</span></div></div>
+        <p class="muted">Ajustes acumulativos sobre el precio base, en orden de secuencia. Se editan en <button class="lnk" data-act="go" data-arg="precios" type="button">Precios según envío</button>.</p></section>`:''}
+      <section class="card"><h2>Ficha del cliente</h2>
+        <div class="tw"><table class="t"><tbody>
+          <tr><td class="muted">Tipo / prioridad</td><td>${c.tipo} · <span class="pill acc">${c.prio}</span></td></tr>
+          <tr><td class="muted">Esquema de precios</td><td>${c.esq}</td></tr>
+          <tr><td class="muted">Zona</td><td class="mono">${c.z} · ${ZONES[c.z]}</td></tr>
+          <tr><td class="muted">Ruta / condición</td><td class="mono">${c.r} · ${c.cond}</td></tr>
+          <tr><td class="muted">UM habilitadas</td><td class="mono">${c.ums.join(' / ')}</td></tr>
+          <tr><td class="muted">Límite de crédito</td><td class="num" style="text-align:left">${money(c.cred)}</td></tr>
+        </tbody></table></div></section>
+    </div>
+  </div>
+  <section class="card"><div class="card-h"><h2>Pedidos abiertos</h2><span class="muted">${state.orders.length} pedidos</span></div>
+    <div class="tw"><table class="t"><thead><tr><th>Pedido</th><th>Cliente</th><th>Carga</th><th>Entrega</th><th>Cond.</th><th>Ruta</th><th class="num">Cajas</th><th>Estado</th><th>Retención</th></tr></thead><tbody>
+    ${recent.map(o=>`<tr><td class="mono">${o.so}</td><td>${esc(CUST[o.cust].n)}</td><td class="mono">${dm(o.date)}</td><td class="mono">${dm(o.req)}</td><td class="mono">${o.cond}</td><td class="mono">${o.ruta}</td>
+      <td class="num">${n1(o.lines.reduce((t,l)=>t+toCJ(l),0))}</td><td>${ordPill(o)}</td>
+      <td>${o.hold.length?`<span class="row">${o.hold.map(h=>`<span class="pill bad" title="${HOLDS[h]}">${h}</span>`).join('')}<button class="btn sm" data-act="unhold" data-arg="${o.so}" type="button">Liberar</button></span>`:'—'}</td></tr>`).join('')}
+    </tbody></table></div></section>`;
+};
+
+VIEWS.compromiso=()=>{
+  const s=sums(), stale=staleLines(), K=state.consts;
+  const rows=ITEMS.map(i=>{const x=s[i.id],av=avail(i.id,s),tot=Math.max(state.inv[i.id],1);return {i,x,av,tot}});
+  const staleCJ=stale.reduce((t,x)=>t+toCJ(x.l),0);
+  return head('Frente 2 · Inventario y compromisos','Compromiso',
+    'Muestra qué stock está tomado, por quién y desde cuándo. Se define en qué momento el compromiso pasa a duro, cuántos días antes de la entrega se compromete, y se detecta el stock comprometido por pedidos que no salen.',
+    [['c','Constantes de sucursal/planta (P41001): método de compromiso y días de compromiso futuro.'],
+     ['c','Reglas de línea de pedido para definir en qué paso se hace el compromiso duro (al imprimir el pick slip).'],
+     ['d','Reporte de stock comprometido vs. disponible con antigüedad del compromiso.']])+`
+  <div class="g2">
+    <section class="card"><div class="card-h"><h2>Comprometido vs. disponible</h2><span class="mono muted">Sucursal MZA01 · en cajas</span></div>
+      <div class="tw"><table class="t"><thead><tr><th>Ítem</th><th class="num">En mano</th><th class="num">Soft</th><th class="num">Hard</th><th class="num">Futuro</th><th class="num">Backorder</th><th class="num">Disponible</th><th style="min-width:130px">Uso del stock</th></tr></thead><tbody>
+      ${rows.map(({i,x,av,tot})=>`<tr><td><span class="mono">${i.id}</span><br><span class="muted">${i.d}</span></td><td class="num">${n1(state.inv[i.id])}</td><td class="num">${n1(x.soft)}</td><td class="num">${n1(x.hard)}</td><td class="num">${x.fut?n1(x.fut):'—'}</td>
+        <td class="num">${x.bo?`<span class="pill warn">${n1(x.bo)}</span>`:'—'}</td><td class="num"><b>${n1(av)}</b></td>
+        <td><div class="bar" aria-label="Soft ${n1(x.soft)}, hard ${n1(x.hard)}, disponible ${n1(av)}"><i class="info" style="width:${x.soft/tot*100}%"></i><i style="width:${x.hard/tot*100}%"></i><i class="ok" style="width:${Math.max(0,av)/tot*100}%"></i></div></td></tr>`).join('')}
+      </tbody></table></div>
+      <div class="legend"><span><i style="background:var(--info)"></i>Soft: reservado en el pedido</span><span><i style="background:var(--accent)"></i>Hard: asignado a ubicación y lote</span><span><i style="background:var(--ok)"></i>Disponible</span></div>
+    </section>
+    <section class="card"><h2>Constantes de compromiso</h2>
+      <div class="field"><label for="c-hard">Momento del compromiso duro</label><select id="c-hard" data-f="c.hardAt">${opt('pedido','Al grabar el pedido',K.hardAt)}${opt('pick','Al imprimir el pick slip (recomendado)',K.hardAt)}</select></div>
+      <p class="muted">${K.hardAt==='pick'?'El pedido reserva cantidad (soft) y recién toma ubicación y lote al imprimir el pick slip. Evita bloquear pallets específicos por pedidos que todavía no van a salir.':'Cada pedido bloquea ubicación y lote desde que se graba. Es más rígido: si el pedido se demora, el depósito no puede usar ese stock.'}</p>
+      <div class="field"><label for="c-fut">Días de compromiso futuro</label><input id="c-fut" class="inp n" type="number" min="0" max="60" value="${K.futDays}" data-f="c.futDays"></div>
+      <p class="muted">Un pedido con entrega dentro de más de ${K.futDays} días no toma stock hoy; se compromete al acercarse la fecha.</p>
+      <div class="field"><label for="c-stale">Alertar compromisos sin salida después de</label><div class="row"><input id="c-stale" class="inp n" type="number" min="1" max="60" value="${K.staleDays}" data-f="c.staleDays"><span class="muted">días</span></div></div>
+    </section>
+  </div>
+  <section class="card"><div class="card-h"><h2>Stock comprometido que no sale</h2>${stale.length?`<span class="pill bad">${stale.length} líneas · ${n1(staleCJ)} cj bloqueadas</span>`:'<span class="pill ok">Sin alertas</span>'}</div>
+    <p class="muted">Pedidos retenidos o con más de ${K.staleDays} días sin pick slip que siguen ocupando stock. Al liberar el compromiso, la línea pasa a backorder y el stock queda disponible para la próxima corrida de liberación.</p>
+    ${stale.length?`<div class="tw"><table class="t"><thead><tr><th>Pedido</th><th>Cliente</th><th>Ítem</th><th class="num">Cajas</th><th class="num">Comprometido hace</th><th>Motivo</th><th></th></tr></thead><tbody>
+    ${stale.map(({o,l,age})=>`<tr><td class="mono">${o.so}</td><td>${esc(CUST[o.cust].n)}</td><td class="mono">${l.item}</td><td class="num">${n1(toCJ(l))}</td><td class="num">${age} días</td>
+      <td>${o.hold.length?o.hold.map(h=>`<span class="pill bad">${h} · ${HOLDS[h].split(':')[0]}</span>`).join(' '):'<span class="pill warn">Sin pick slip</span>'}</td>
+      <td><button class="btn sm" data-act="uncommit" data-arg="${o.so}|${o.lines.indexOf(l)}" type="button">Liberar compromiso</button></td></tr>`).join('')}
+    </tbody></table></div><div class="row"><button class="btn" data-act="uncommitAll" type="button">Liberar todos</button></div>`:''}
+  </section>`;
+};
+
+VIEWS.backorder=()=>{
+  const B=state.bo, sim=simulate(B.rule), all=boLines(), held=all.filter(x=>x.held);
+  const comp=Object.keys(RULES).map(k=>({k,...simulate(k)}));
+  const buckets=[['0 a 3 días',0,3],['4 a 7 días',4,7],['8 a 14 días',8,14],['Más de 14 días',15,999]].map(([n,a,b])=>({n,cj:all.filter(x=>x.age>=a&&x.age<=b).reduce((t,x)=>t+toCJ(x.l),0)}));
+  const maxB=Math.max(1,...buckets.map(b=>b.cj));
+  const s=sums();
+  return head('Frente 3 · Backorder Release','Liberación de backorder',
+    'La liberación deja de ser manual: corre por lotes en horario fijo con una regla de priorización explícita. Antes de ejecutar se puede comparar qué pasaría con cada regla.',
+    [['c','Versión de R42118 con selección de datos y secuencia según la regla acordada.'],
+     ['c','Programación en el servidor de procesos batch: corridas a las 06:00 y a las 13:30.'],
+     ['d','Tablero de backorders con antigüedad (consulta o UDO de tipo watchlist).']])+`
+  <div class="g3">
+    <section class="card"><h3>Corridas programadas</h3><div class="stack">
+      <div class="row" style="justify-content:space-between"><span class="mono">06:00</span><span class="pill ok">Ejecutada</span></div>
+      <div class="row" style="justify-content:space-between"><span class="mono">13:30</span><span class="pill">Próxima</span></div>
+      <p class="muted">${B.runs?`Ejecuciones manuales en la demo: ${B.runs}.`:'Lun a vie. Se puede ejecutar ahora para la demo.'}</p></div></section>
+    <section class="card"><h3>Recepciones del día</h3>
+      <p class="muted">OC 4471 · Blend de Altura +36 cj, Espumante Brut +40 cj, Torrontés +60 cj.</p>
+      <button class="btn${state.receipt?'':' pri'}" data-act="receipt" type="button"${state.receipt?' disabled':''}>${state.receipt?'Recepción registrada':'Registrar recepción OC 4471'}</button></section>
+    <section class="card"><h3>Disponible para liberar</h3><div class="stack">
+      ${ITEMS.filter(i=>s[i.id].bo>0).map(i=>`<div class="row" style="justify-content:space-between"><span class="mono">${i.id}</span><span class="num">${n1(Math.max(0,avail(i.id,s)))} de ${n1(s[i.id].bo)} cj</span></div>`).join('')||'<p class="muted">No hay backorder pendiente.</p>'}</div></section>
+  </div>
+  <section class="card"><h2>Regla de priorización</h2>
+    <div class="rules">${Object.entries(RULES).map(([k,r])=>`<label class="rule"><input type="radio" name="borule" value="${k}" data-f="bo.rule"${B.rule===k?' checked':''}><span><span class="rt">${r.t}</span><br><span class="rd">${r.d}</span></span></label>`).join('')}</div>
+    ${B.rule==='comb'?`<div class="sliders">${[['a','Antigüedad'],['c','Prioridad de cliente'],['m','Margen']].map(([k,n])=>`<div class="field"><label for="w-${k}">${n} · <b>${B.w[k]}</b></label><input id="w-${k}" type="range" min="0" max="100" step="5" value="${B.w[k]}" data-f="bo.w:${k}"></div>`).join('')}</div>`:''}
+    <label class="row"><input id="bo-part" type="checkbox" data-f="bo.partial"${B.partial?' checked':''} style="accent-color:var(--accent)"> Permitir liberación parcial de líneas</label>
+  </section>
+  <section class="card"><div class="card-h"><h2>Comparación de reglas con el stock de hoy</h2><span class="muted">Simulación, no modifica pedidos</span></div>
+    <div class="tw"><table class="t"><thead><tr><th>Regla</th><th class="num">Cajas liberadas</th><th class="num">Líneas completas</th><th class="num">% a clientes A</th><th class="num">Antigüedad prom. del BO que queda</th><th class="num">Más vieja que queda</th></tr></thead><tbody>
+    ${comp.map(c=>`<tr class="${c.k===B.rule?'sel':''}"><td>${RULES[c.k].t}</td><td class="num">${n1(c.relCJ)}</td><td class="num">${c.full}</td><td class="num">${c.relCJ?n0(c.aShare*100)+' %':'—'}</td><td class="num">${n1(c.avgAge)} días</td><td class="num">${c.maxAge} días</td></tr>`).join('')}
+    </tbody></table></div>
+    ${!state.receipt?`<div class="msg info">Todavía no hay stock para liberar. Registrá la recepción de la OC 4471 para ver la diferencia entre reglas.</div>`:''}
+  </section>
+  <div class="g2">
+    <section class="card"><div class="card-h"><h2>Orden de liberación · ${RULES[B.rule].t}</h2><button class="btn pri" data-act="runBO" type="button"${sim.relCJ?'':' disabled'}>Ejecutar liberación (R42118)</button></div>
+      <div class="tw"><table class="t"><thead><tr><th>#</th><th>Pedido</th><th>Cliente</th><th>Ítem</th><th class="num">Pendiente</th><th class="num">Antig.</th><th class="num">Margen</th><th>Resultado</th></tr></thead><tbody>
+      ${sim.list.map((x,i)=>`<tr><td class="mono muted">${i+1}</td><td class="mono">${x.o.so}</td><td>${esc(CUST[x.o.cust].n)} <span class="pill acc">${x.prio}</span></td><td class="mono">${x.l.item}</td><td class="num">${x.l.qty} ${x.l.um}</td><td class="num">${x.age} d</td><td class="num">${n0(x.margin*100)} %</td>
+        <td>${x.rel===x.l.qty?'<span class="pill ok">Libera</span>':x.rel>0?`<span class="pill warn">Parcial ${x.rel}</span>`:'<span class="pill">Sigue en BO</span>'}</td></tr>`).join('')}
+      ${held.map(x=>`<tr class="dim"><td></td><td class="mono">${x.o.so}</td><td>${esc(CUST[x.o.cust].n)}</td><td class="mono">${x.l.item}</td><td class="num">${x.l.qty} ${x.l.um}</td><td class="num">${x.age} d</td><td></td><td><span class="pill bad">Retenido ${x.o.hold.join(', ')}</span></td></tr>`).join('')}
+      ${!all.length?'<tr><td colspan="8" class="muted">No hay líneas en backorder.</td></tr>':''}
+      </tbody></table></div></section>
+    <section class="card"><h2>Antigüedad del backorder</h2>
+      <div class="stack">${buckets.map(b=>`<div class="stack" style="gap:3px"><div class="row" style="justify-content:space-between"><span>${b.n}</span><span class="num">${n1(b.cj)} cj</span></div><div class="bar"><i class="${b.n.startsWith('Más')?'bad':b.n.startsWith('8')?'warn':'info'}" style="width:${b.cj/maxB*100}%"></i></div></div>`).join('')}</div>
+      <p class="muted">Promedio actual: <b>${n1(boAvgAge())} días</b> en ${all.length} líneas.</p></section>
+  </div>`;
+};
+
+VIEWS.ruta=()=>{
+  const pick=state.slips;
+  return head('Frente 4 · Transportation','Armado de ruta',
+    'Cada cliente trae su ruta por defecto. Los pedidos listos se consolidan por ruta y se cargan en el vehículo según la capacidad en pallets, antes de imprimir un único pick slip por viaje.',
+    [['c','Zonas (42/ZN) y rutas (42/RT) con días de salida, asignadas por defecto desde el cliente.'],
+     ['c','Impresión de pick slips (R42520) seleccionando por ruta, para consolidar el picking por viaje.'],
+     ['d','Evaluar el módulo Transportation de JDE (cargas y vehículos) o un optimizador de ruteo externo integrado por orquestación.']])+`
+  <div class="stack" style="gap:16px">${ROUTES.map(R=>{
+    const {trips,over}=assign(R.id), n=trips.reduce((t,x)=>t+x.orders.length,0)+over.length;
+    if(!n&&R.id!=='RET') return `<section class="card"><div class="card-h"><h3><span class="mono">${R.id}</span> · ${R.d}</h3><span class="muted">${R.dias} · ${R.veh} ${R.cap} pallets · sin pedidos listos</span></div></section>`;
+    return `<section class="card"><div class="card-h"><h2><span class="mono">${R.id}</span> · ${R.d}</h2><span class="muted">${R.z?`Zona ${R.z} · `:''}${R.dias}${R.veh?` · ${R.veh} de ${R.cap} pallets`:''}</span></div>
+      ${trips.map((t,i)=>{const u=R.cap?t.load/R.cap:0,cls=u>.95?'warn':u<.3?'info':'ok';
+        return `<div class="trip"><div class="trip-h"><b>${R.veh?`Viaje ${i+1} · ${R.veh}`:'Retira el cliente o su expreso'}</b><span class="num">${n1(t.load)}${R.cap?` de ${R.cap} pallets · ${n0(u*100)} %`:' pallets'}</span></div>
+          ${R.cap?`<div class="bar"><i class="${cls}" style="width:${Math.min(100,u*100)}%"></i></div>`:''}
+          ${R.cap&&u<.3&&t.orders.length?`<div class="msg info">Ocupación baja: conviene sumar pedidos de otra ruta de la zona o pasar la entrega a expreso.</div>`:''}
+          ${t.orders.length?`<ol class="stops">${t.orders.map(o=>{const c=CUST[o.cust];return `<li><span class="mono">${o.so}</span><span>${esc(c.n)}</span><span class="muted">${n1(pallets(o))} pal · entrega ${dm(o.req)}</span>
+            <select data-f="o.ruta:${o.so}" id="or-${o.so}" aria-label="Ruta del pedido ${o.so}">${ROUTES.map(r=>opt(r.id,r.id+(r.id===c.r?' (defecto)':''),o.ruta)).join('')}</select></li>`}).join('')}</ol>`:'<p class="muted">Sin pedidos asignados a este viaje.</p>'}</div>`}).join('')}
+      ${over.length?`<div class="msg err"><span><b>Sin lugar en el vehículo:</b> ${over.map(o=>`${o.so} (${n1(pallets(o))} pal)`).join(', ')}. <button class="lnk" data-act="addTrip" data-arg="${R.id}" type="button">Agregar un viaje</button> o pasá el pedido a otra ruta.</span></div>`:''}
+      <div class="row"><button class="btn pri" data-act="pick" data-arg="${R.id}" type="button"${trips.some(t=>t.orders.length)?'':' disabled'}>Generar pick slip consolidado</button>${(state.trips[R.id]||1)>1?`<button class="btn" data-act="delTrip" data-arg="${R.id}" type="button">Quitar último viaje</button>`:''}</div>
+    </section>`}).join('')}</div>
+  <section class="card"><div class="card-h"><h2>Pick slips consolidados</h2><span class="muted">${pick.length} generados</span></div>
+    ${pick.length?pick.map(p=>`<div class="trip"><div class="trip-h"><b class="mono">${p.id} · ${p.ruta}${p.veh?' · '+p.veh:''}</b><span class="row">${p.status==='despachado'?'<span class="pill ok">Despachado</span>':'<span class="pill info">Impreso</span>'}${p.status==='impreso'?`<button class="btn sm pri" data-act="ship" data-arg="${p.id}" type="button">Confirmar despacho</button>`:''}</span></div>
+      <div class="tw"><table class="t"><thead><tr><th>Ítem</th><th class="num">Cajas</th><th class="num">Pallets</th></tr></thead><tbody>${Object.entries(p.items).map(([k,v])=>`<tr><td><span class="mono">${k}</span> <span class="muted">${ITEM[k].d}</span></td><td class="num">${n1(v)}</td><td class="num">${n1(v/ITEM[k].cjp)}</td></tr>`).join('')}</tbody></table></div>
+      <p class="muted">Pedidos: ${p.orders.join(', ')}. El depósito arma una sola vez por ítem y separa por parada.</p></div>`).join('')
+      :'<p class="muted">Todavía no se generó ninguno. Usá “Generar pick slip consolidado” en una ruta.</p>'}
+  </section>`;
+};
+
+VIEWS.precios=()=>{
+  const P=state.pricing, S=state.ps, it=ITEM[S.item];
+  const ref=cond=>priceCore({esq:S.esq,cond,zona:'MZA',item:S.item,um:'CJ',cj:0});
+  const cell=(cond,z)=>{
+    const p=cond==='RET'?P.retiro:cond==='REP'?P.rep[z]:cond==='FLI'?P.fli[z]:0, amt=it.precio*p/100;
+    let cov,cls,txt;
+    if(cond==='EXP'){cls='';txt='El cliente paga el flete'}
+    else if(cond==='RET'){const save=P.cp[z];cls=-amt<=save?'ok':'bad';txt=`bonif. ${money(-amt)} · ahorro ${money(save)}`}
+    else{const cost=cond==='REP'?P.cp[z]:P.ct[z];cov=cost?amt/cost:0;cls=cov>=.95?'ok':cov>=.6?'warn':'bad';txt=`cubre ${n0(cov*100)} % de ${money(cost)}`}
+    return `<td><button type="button" class="cell ${S.cond===cond&&S.zona===z?'sel':''}" data-act="cell" data-arg="${cond}|${z}"><span class="a">${pct(p)}</span><span class="b">${money(amt)}/cj</span>${cls?`<span class="pill ${cls}">${cls==='ok'?'Cubre':cls==='warn'?'Parcial':'No cubre'}</span>`:'<span class="pill">—</span>'}<span class="b">${txt}</span></button></td>`;
+  };
+  const pr=priceCore({esq:S.esq,cond:S.cond,zona:S.zona,item:S.item,um:'CJ',cj:S.cj});
+  const inp=(path,v,lbl,step=.5)=>`<input class="inp n" type="number" step="${step}" value="${v}" id="p-${path.replace(/\./g,'-')}" data-f="p:${path}" aria-label="${lbl}">`;
+  return head('Frente 5 · Advanced Pricing','Lista de precios según envío',
+    'El precio pasa a reflejar el costo logístico: bonificación por retiro, recargo por zona en reparto propio, flete incluido y bonificación por volumen. Todo con secuencia y tope definidos, así no se pisan entre sí.',
+    [['c','Tipos de ajuste (P4071) y detalle por condición de envío, zona y volumen (P4072) dentro de un esquema de ajustes (P4070).'],
+     ['c','Jerarquía de preferencias (P40073) para el esquema por cliente o grupo de clientes.'],
+     ['d','Reporte de control: recargo cobrado vs. costo logístico por zona.']])+`
+  <div class="g2">
+    <section class="card"><div class="card-h"><h2>Cobertura del costo logístico</h2><span class="muted">por caja · ${it.d}</span></div>
+      <div class="row"><div class="field" style="min-width:220px;flex:1"><label for="ps-item">Ítem de referencia</label><select id="ps-item" data-f="ps.item">${ITEMS.map(x=>opt(x.id,x.id+' · '+x.d,S.item)).join('')}</select></div>
+      <div class="field" style="min-width:160px"><label for="ps-esq">Esquema de cliente</label><select id="ps-esq" data-f="ps.esq">${opt('Estándar','Estándar',S.esq)}${opt('Gran cuenta','Gran cuenta',S.esq)}</select></div></div>
+      <div class="tw"><table class="t matrix"><thead><tr><th>Condición</th>${Object.keys(ZONES).map(z=>`<th style="text-align:center">${z}<br><span class="muted">${ZONES[z]}</span></th>`).join('')}</tr></thead><tbody>
+      ${Object.keys(CONDS).map(cd=>`<tr><td><b class="mono">${cd}</b><br><span class="muted">${CONDS[cd]}</span></td>${Object.keys(ZONES).map(z=>cell(cd,z)).join('')}</tr>`).join('')}
+      </tbody></table></div>
+      <p class="muted">Reparto y flete incluido: recargo cobrado sobre el costo logístico de la zona. Retiro: la bonificación no debería superar lo que se ahorra en reparto. Tocá una celda para ver el precio completo.</p>
+    </section>
+    <section class="card"><div class="card-h"><h2>Precio para ${S.cond} · ${S.zona}</h2><span class="mono muted">${S.item}</span></div>
+      <div class="field"><label for="ps-cj">Cajas en el pedido</label><input id="ps-cj" class="inp n" type="number" min="1" step="10" value="${S.cj}" data-f="ps.cj"></div>
+      <div class="wf"><div class="wf-r"><span class="mono muted">10</span><span>Precio base de lista</span><span></span><span class="num">${money(pr.base)}</span></div>
+      ${pr.adj.map(a=>`<div class="wf-r"><span class="mono muted">${a.seq}</span><span>${a.n}</span><span class="num muted">${pct(a.p)}</span><span class="num">${money(pr.base*a.p/100)}</span></div>`).join('')}
+      <div class="wf-r tot"><span></span><span>Precio final por caja</span><span class="num">${pct(pr.p)}</span><span class="num">${money(pr.final)}</span></div></div>
+      <div class="msg info">Total del pedido de ejemplo: <b>&nbsp;${money(pr.final*S.cj)}</b></div>
+    </section>
+  </div>
+  <section class="card"><div class="card-h"><h2>Esquema de ajustes</h2><span class="muted">Se aplican en orden de secuencia, acumulativos sobre el precio base</span></div>
+    <div class="tw"><table class="t"><thead><tr><th>Sec.</th><th>Ajuste</th><th>Criterio</th><th>Valor</th></tr></thead><tbody>
+      <tr><td class="mono">15</td><td>Recargo por venta fraccionada</td><td>UM = BT</td><td>${inp('fraccion',P.fraccion,'Recargo fraccionado')} %</td></tr>
+      <tr><td class="mono">20</td><td>Esquema de cliente</td><td>Gran cuenta</td><td>${inp('granCuenta',P.granCuenta,'Bonificación gran cuenta')} %</td></tr>
+      <tr><td class="mono">30</td><td>Bonificación por retiro</td><td>Condición RET</td><td>${inp('retiro',P.retiro,'Bonificación por retiro')} %</td></tr>
+      <tr><td class="mono">30</td><td>Recargo reparto propio</td><td>Condición REP, por zona</td><td><div class="row">${Object.keys(ZONES).map(z=>`<span class="row" style="gap:4px"><span class="mono muted">${z}</span>${inp('rep.'+z,P.rep[z],'Reparto zona '+z)}</span>`).join('')}</div></td></tr>
+      <tr><td class="mono">30</td><td>Flete incluido</td><td>Condición FLI, por zona</td><td><div class="row">${Object.keys(ZONES).map(z=>`<span class="row" style="gap:4px"><span class="mono muted">${z}</span>${inp('fli.'+z,P.fli[z],'Flete incluido zona '+z)}</span>`).join('')}</div></td></tr>
+      <tr><td class="mono">40</td><td>Bonificación por volumen</td><td>Cajas por pedido</td><td><div class="stack"><span class="row" style="gap:4px">≥ ${inp('vol1.min',P.vol1.min,'Volumen tramo 1 mínimo',10)} cj ${inp('vol1.pct',P.vol1.pct,'Volumen tramo 1 porcentaje')} %</span><span class="row" style="gap:4px">≥ ${inp('vol2.min',P.vol2.min,'Volumen tramo 2 mínimo',10)} cj ${inp('vol2.pct',P.vol2.pct,'Volumen tramo 2 porcentaje')} %</span></div></td></tr>
+      <tr><td class="mono">90</td><td>Tope de bonificaciones</td><td>Suma de ajustes negativos</td><td>${inp('tope',P.tope,'Tope de bonificaciones')} %</td></tr>
+    </tbody></table></div></section>
+  <section class="card"><div class="card-h"><h2>Costo logístico por caja</h2><span class="muted">Se releva en el diagnóstico · valores de ejemplo</span></div>
+    <div class="tw"><table class="t"><thead><tr><th></th>${Object.keys(ZONES).map(z=>`<th>${z}</th>`).join('')}</tr></thead><tbody>
+      <tr><td>Reparto propio</td>${Object.keys(ZONES).map(z=>`<td>${inp('cp.'+z,P.cp[z],'Costo propio '+z,100)}</td>`).join('')}</tr>
+      <tr><td>Transporte tercerizado</td>${Object.keys(ZONES).map(z=>`<td>${inp('ct.'+z,P.ct[z],'Costo tercerizado '+z,100)}</td>`).join('')}</tr>
+    </tbody></table></div></section>`;
+};
+
+VIEWS.indicadores=()=>{
+  const sess=state.orders.filter(o=>o.session), desp=state.orders.filter(o=>o.status==='desp'&&o.onTime!==undefined);
+  const K=[
+    {n:'Pedidos entregados en la fecha comprometida',u:'%',base:71,meta:90,hi:true,act:(71+desp.filter(o=>o.onTime).length)/(100+desp.length)*100,src:`Línea base de 100 pedidos + ${desp.length} despachados en la demo`},
+    {n:'Antigüedad promedio del backorder',u:' días',base:9.5,meta:4,hi:false,act:boAvgAge(),src:`Calculado sobre ${boLines().length} líneas en backorder`},
+    {n:'Tiempo desde la carga hasta la liberación al depósito',u:' h',base:30,meta:8,hi:false,act:null,src:'Se mide en el diagnóstico con fechas de P4210 y R42520'},
+    {n:'Errores de picking cada mil líneas',u:'',base:6.2,meta:2,hi:false,act:null,src:'Se mide con las devoluciones y ajustes del depósito'},
+    {n:'Costo logístico por entrega',u:'',money:true,base:48500,meta:41000,hi:false,act:null,src:'Se mide con facturas de flete y costo de flota propia'},
+    {n:'Pedidos con precio de envío correcto en la primera carga',u:'%',base:64,meta:95,hi:true,act:(64+sess.filter(o=>o.firstOk).length)/(100+sess.length)*100,src:`Línea base de 100 pedidos + ${sess.length} cargados en la demo`},
+  ];
+  const fv=(k,v)=>v===null?'—':k.money?money(v):n1(v)+k.u;
+  return `<header class="vh"><div class="eyebrow mono">Seguimiento</div><h1>Indicadores de éxito</h1>
+    <p class="lead">Se miden en el diagnóstico como línea base y se comparan al cierre de la estabilización. En la demo, dos indicadores se recalculan con lo que hacés en las pantallas; el resto muestra cómo se va a medir.</p></header>
+  <div class="msg info">Línea base y metas son valores de ejemplo para la demo. Los reales salen del diagnóstico.</div>
+  <div class="kpis">${K.map(k=>{
+    const prog=k.act===null?null:Math.max(0,Math.min(1,(k.act-k.base)/(k.meta-k.base)));
+    return `<section class="card kpi"><span class="kn">${k.n}</span>
+      <div class="row" style="align-items:baseline;justify-content:space-between"><span class="kv">${fv(k,k.act)}</span>${k.act===null?'<span class="pill">Se mide en el proyecto</span>':`<span class="pill ${prog>=1?'ok':prog>0?'warn':''}">${n0(prog*100)} % hacia la meta</span>`}</div>
+      ${prog!==null?`<div class="gauge" aria-hidden="true"><i style="width:${prog*100}%"></i></div>`:''}
+      <dl><dt>Línea base</dt><dd>${fv(k,k.base)}</dd><dt>Meta</dt><dd>${fv(k,k.meta)}</dd><dt>Mejor si</dt><dd>${k.hi?'sube':'baja'}</dd></dl>
+      <p class="muted" style="font-size:.8rem">${k.src}</p></section>`}).join('')}</div>
+  <section class="card"><h2>Riesgos que la demo ayuda a bajar</h2>
+    <div class="tw"><table class="t"><tbody>
+      <tr><td><b>Reglas de negocio no definidas</b></td><td class="muted">La comparación de reglas de backorder y la matriz de precios por envío ponen los criterios sobre la mesa con Logística, Comercial y Administración.</td></tr>
+      <tr><td><b>Datos maestros sucios</b></td><td class="muted">La retención PI muestra el efecto de una dirección faltante; el diagnóstico releva zonas, rutas y direcciones.</td></tr>
+      <tr><td><b>Resistencia al cambio</b></td><td class="muted">Depósito y reparto ven el pick slip consolidado y la carga del vehículo antes de la capacitación.</td></tr>
+      <tr><td><b>Desarrollar lo que se configura</b></td><td class="muted">Cada pantalla marca qué es configuración estándar y qué requiere desarrollo.</td></tr>
+    </tbody></table></div></section>`;
+};
+
+/* ===== Acciones ===== */
+function toast(m){const t=$('#toast');t.textContent=m;t.classList.add('on');clearTimeout(toast.h);toast.h=setTimeout(()=>t.classList.remove('on'),3200)}
+const commitSt=()=>state.consts.hardAt==='pedido'?'hard':'soft';
+const ACT={
+  go(v){state.view=v;try{history.replaceState(null,'','#'+v)}catch(e){};render();window.scrollTo(0,0)},
+  addLine(){state.draft.lines.push({item:'TOR-JOV-750',um:'CJ',qty:12});state.draft.sel=state.draft.lines.length-1},
+  delLine(i){state.draft.lines.splice(+i,1);state.draft.sel=0},
+  selLine(i){state.draft.sel=+i},
+  fixRoute(){const d=state.draft,c=CUST[d.cust];d.ruta=(d.cond==='RET'||d.cond==='EXP')?'RET':(c.r!=='RET'?c.r:(ROUTES.find(r=>r.z===c.z)||ROUTES[0]).id);toast('Ruta ajustada a '+d.ruta)},
+  save(){
+    const E=evalDraft(), d=state.draft; if(E.errs) return;
+    const so=state.nextSO++, lines=[];
+    E.lines.forEach(l=>{
+      const base={item:l.item,um:l.um,price:l.price.final,at:TODAY};
+      if(l.fq) lines.push({...base,qty:l.fq,st:'fut'});
+      if(l.cq) lines.push({...base,qty:l.cq,st:commitSt()});
+      if(l.bo) lines.push({...base,qty:l.bo,st:'bo'});
+    });
+    state.orders.push({so,cust:d.cust,date:TODAY,req:d.req,cond:d.cond,ruta:d.ruta,dir:d.dir,hold:E.holds,status:'abierto',lines,firstOk:!E.holds.includes('PE'),session:true});
+    state.lastSaved=so;
+    log(`Pedido ${so} grabado para ${CUST[d.cust].n}${E.holds.length?' · retenido '+E.holds.join(', '):''}.`,6);
+    state.draft=newDraft(d.cust,[{item:'MAL-RES-750',um:'CJ',qty:20}]);
+    toast(`Pedido ${so} grabado`);
+  },
+  unhold(so){const o=state.orders.find(x=>x.so===+so);if(o.hold.includes('PI')&&!o.dir)o.dir='Dirección completada al liberar';
+    if(o.hold.includes('PE'))o.ruta=(o.cond==='RET'||o.cond==='EXP')?'RET':CUST[o.cust].r;
+    log(`Retención ${o.hold.join(', ')} liberada en el pedido ${o.so}.`);o.hold=[];toast(`Pedido ${so} liberado`)},
+  uncommit(arg){const [so,i]=arg.split('|'),o=state.orders.find(x=>x.so===+so),l=o.lines[+i];l.st='bo';log(`Compromiso liberado: ${o.so} ${l.item} ${l.qty} ${l.um} vuelve al disponible.`);toast('Stock liberado al disponible')},
+  uncommitAll(){const st=staleLines();st.forEach(x=>x.l.st='bo');log(`Se liberaron ${st.length} compromisos sin salida.`);toast(`${st.length} compromisos liberados`)},
+  receipt(){state.inv['BLD-ALT-750']+=36;state.inv['ESP-BRU-750']+=40;state.inv['TOR-JOV-750']+=60;state.receipt=true;log('Recepción de la OC 4471 registrada: +36 BLD, +40 ESP, +60 TOR.',5);toast('Recepción registrada')},
+  runBO(){
+    const sim=simulate(state.bo.rule); let n=0;
+    sim.list.forEach(x=>{ if(!x.rel) return; n++;
+      if(x.rel===x.l.qty){x.l.st=commitSt();x.l.at=TODAY}
+      else{x.l.qty-=x.rel;x.o.lines.splice(x.o.lines.indexOf(x.l)+1,0,{...x.l,qty:x.rel,st:commitSt(),at:TODAY})}
+      if(x.o.status==='desp') x.o.status='abierto';
+    });
+    state.bo.runs++; log(`R42118 · regla ${RULES[state.bo.rule].t}: ${n} líneas liberadas, ${n1(sim.relCJ)} cj.`,4);
+    toast(`${n} líneas liberadas del backorder`);
+  },
+  addTrip(r){state.trips[r]=(state.trips[r]||1)+1;log(`Se agregó un viaje a la ruta ${r}.`,2);toast('Viaje agregado')},
+  delTrip(r){state.trips[r]=Math.max(1,(state.trips[r]||1)-1)},
+  pick(r){
+    const R=ROUTE[r],{trips}=assign(r); let made=0;
+    trips.forEach((t,i)=>{ if(!t.orders.length) return;
+      const id='PS-'+(state.nextSlip++), items={};
+      t.orders.forEach(o=>{o.status='pick';o.slip=id;o.lines.filter(isComm).forEach(l=>{l.st='hard';items[l.item]=(items[l.item]||0)+toCJ(l)})});
+      state.slips.unshift({id,ruta:r,veh:R.veh?`Viaje ${i+1} · ${R.veh}`:'',orders:t.orders.map(o=>o.so),items,status:'impreso'}); made++;
+    });
+    log(`Ruta ${r}: ${made} pick slip${made>1?'s':''} consolidado${made>1?'s':''} impreso${made>1?'s':''} (R42520).`,8);
+    toast(`${made} pick slip${made>1?'s':''} generado${made>1?'s':''}`);
+  },
+  ship(id){
+    const p=state.slips.find(x=>x.id===id);
+    p.orders.forEach(so=>{const o=state.orders.find(x=>x.so===so);
+      o.lines.filter(isComm).forEach(l=>{state.inv[l.item]-=toCJ(l);l.st='ship'});
+      o.status='desp';o.onTime=TODAY<=o.req;});
+    p.status='despachado'; log(`Despacho confirmado de ${p.id} (${p.orders.length} pedidos).`,10); toast(`${p.id} despachado`);
+  },
+  cell(arg){const [c,z]=arg.split('|');state.ps.cond=c;state.ps.zona=z},
+};
+function setPath(obj,path,v){const k=path.split('.');let o=obj;while(k.length>1)o=o[k.shift()];o[k[0]]=v}
+function onField(key,v,el){
+  const [k,arg]=key.split(':'), d=state.draft;
+  switch(k){
+    case 'd.cust': state.draft=newDraft(v,d.lines); break;
+    case 'd.cond': d.cond=v; break;
+    case 'd.ruta': d.ruta=v; break;
+    case 'd.dir': d.dir=v; break;
+    case 'd.req': if(v) d.req=v; break;
+    case 'l.item': d.lines[+arg].item=v; d.sel=+arg; break;
+    case 'l.um': d.lines[+arg].um=v; d.sel=+arg; break;
+    case 'l.qty': d.lines[+arg].qty=Math.max(0,Math.round(Number(v)||0)); d.sel=+arg; break;
+    case 'c.hardAt': state.consts.hardAt=v; log('Constante: compromiso duro '+(v==='pick'?'al imprimir el pick slip.':'al grabar el pedido.'),1); break;
+    case 'c.futDays': state.consts.futDays=Math.max(0,Number(v)||0); break;
+    case 'c.staleDays': state.consts.staleDays=Math.max(1,Number(v)||1); break;
+    case 'bo.rule': state.bo.rule=v; break;
+    case 'bo.partial': state.bo.partial=el.checked; break;
+    case 'bo.w': state.bo.w[arg]=Number(v); break;
+    case 'o.ruta': {const o=state.orders.find(x=>x.so===+arg); o.ruta=v; log(`Pedido ${o.so} pasado a la ruta ${v}.`,1); break}
+    case 'ps.item': state.ps.item=v; break;
+    case 'ps.esq': state.ps.esq=v; break;
+    case 'ps.cj': state.ps.cj=Math.max(1,Number(v)||1); break;
+    case 'p': if(v!==''&&!isNaN(Number(v))) setPath(state.pricing,arg,Number(v)); break;
+  }
+  render();
+}
+
+/* ===== Render ===== */
+function renderNav(){
+  $('#nav').innerHTML=NAV.map(x=>x.g?`<div class="nav-g">${x.g}</div>`:`<button type="button" class="nav-b${state.view===x.v?' on':''}" data-view="${x.v}"${state.view===x.v?' aria-current="page"':''}><span class="l">${x.l}</span><span class="c">${x.c}</span></button>`).join('');
+}
+function render(){
+  const act=document.activeElement&&document.activeElement.id;
+  renderNav();
+  $('#main').innerHTML=VIEWS[state.view]();
+  $('#clock').textContent='20/10/2026 '+clockStr();
+  if(act){const el=document.getElementById(act); if(el&&el.closest('#main')) el.focus()}
+}
+$('#nav').addEventListener('click',e=>{const b=e.target.closest('[data-view]');if(b)ACT.go(b.dataset.view)});
+$('#main').addEventListener('click',e=>{const b=e.target.closest('[data-act]');if(!b||b.disabled)return;const fn=ACT[b.dataset.act];if(!fn)return;fn(b.dataset.arg,b);if(b.dataset.act!=='go')render()});
+$('#main').addEventListener('change',e=>{const f=e.target.closest('[data-f]');if(f)onField(f.dataset.f,f.value,f)});
+$('#reset').addEventListener('click',()=>{const v=state.view;seed();state.view=v;render();toast('Demo reiniciada')});
+
+seed();
+try{const h=location.hash.slice(1);if(VIEWS[h])state.view=h}catch(e){}
+render();
+</script>
